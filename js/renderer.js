@@ -36,6 +36,27 @@ class Renderer {
     for (const e of spawnSystem.activeEnemies) this._drawEnemy(e);
     this._drawPlayer(player);
 
+    // ショップピックアップ（カメラ変換内で描画）
+    if (isTA && gameState.taShopPickup) {
+      const pk = gameState.taShopPickup;
+      const blink = pk.timeLeft < 5 && Math.sin(pk.blinkPhase) < 0;
+      if (!blink) {
+        ctx.save();
+        ctx.translate(pk.x, pk.y);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 30);
+        g.addColorStop(0, 'rgba(250,200,80,0.5)'); g.addColorStop(1, 'rgba(250,200,80,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#FAC775'; ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, 19, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (pk.timeLeft / 20));
+        ctx.stroke();
+        ctx.font = '20px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('🏪', 0, 1);
+        ctx.restore();
+      }
+    }
+
     if (gameState.particleSystem) gameState.particleSystem.draw(ctx);
 
     if (spawnSystem.isBossStage && spawnSystem.activeBoss) {
@@ -69,6 +90,36 @@ class Renderer {
       fog.addColorStop(1,   'rgba(10,12,26,0.97)');
       ctx.fillStyle = fog;
       ctx.fillRect(vp.x, vp.y, vp.w, vp.h);
+
+      // 敵方向インジケーター（画面端に三角形）
+      const mg = 15;
+      const L = vp.x + mg, R = vp.x + vp.w - mg;
+      const T = vp.y + mg, B = vp.y + vp.h - mg;
+      for (const e of spawnSystem.activeEnemies) {
+        if (e.isInvincible) continue;
+        const exS = vp.x + (e.x - cam.x);
+        const eyS = vp.y + (e.y - cam.y);
+        const dx = exS - spx; const dy = eyS - spy;
+        if (Math.hypot(dx, dy) < vis * 0.85) continue;
+        const angle = Math.atan2(dy, dx);
+        const cos = Math.cos(angle); const sin = Math.sin(angle);
+        let t = Infinity;
+        if (cos >  0.001) t = Math.min(t, (R - spx) / cos);
+        if (cos < -0.001) t = Math.min(t, (L - spx) / cos);
+        if (sin >  0.001) t = Math.min(t, (B - spy) / sin);
+        if (sin < -0.001) t = Math.min(t, (T - spy) / sin);
+        if (!isFinite(t)) continue;
+        const ix = Math.max(L, Math.min(R, spx + cos * t));
+        const iy = Math.max(T, Math.min(B, spy + sin * t));
+        ctx.save();
+        ctx.translate(ix, iy); ctx.rotate(angle);
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = e.type === 'boss' ? '#ff4444' : e.color;
+        ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-5, -5); ctx.lineTo(-5, 5);
+        ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
     }
   }
 

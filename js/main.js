@@ -7,6 +7,9 @@ const gameState = {
   mode: 'normal',   // 'normal' | 'endless' | 'timeattack'
   timeLeft: 180,
   camera: { x: 0, y: 0 },
+  taShopPickup: null,
+  taShopSpawnTimer: 25,
+  taBossSpawned: {},
   player: null,
   spawnSystem:       null,
   combatSystem:      null,
@@ -64,6 +67,11 @@ function initGame() {
   gameState.isPaused         = false;
   gameState.pendingLevelUps  = 0;
   gameState.pendingShop      = false;
+  if (isTA) {
+    gameState.taShopPickup    = null;
+    gameState.taShopSpawnTimer = 25;
+    gameState.taBossSpawned   = {};
+  }
   gameState.spawnSystem      = new SpawnSystem();
   gameState.combatSystem     = new CombatSystem();
   gameState.coinSystem       = new CoinSystem();
@@ -120,14 +128,56 @@ function update(dt, now) {
   if (isTA) {
     gameState.timeLeft = Math.max(0, gameState.timeLeft - dt);
     if (gameState.timeLeft <= 0) { triggerTimeUp(); return; }
+
     // カメラをプレーヤーに追従
     const vp = CONFIG.TIMEATTACK_VIEWPORT;
     gameState.camera.x = Math.max(0, Math.min(room.w - vp.w, player.x - vp.w / 2));
     gameState.camera.y = Math.max(0, Math.min(room.h - vp.h, player.y - vp.h / 2));
+
+    // 経過時間で難易度スケール
+    const elapsed = 180 - gameState.timeLeft;
+    const effStage = 1 + Math.floor(elapsed / 12);
+    spawnSystem.stage = effStage;
+    const effPool = CONFIG.stageEnemyPool(Math.min(effStage, 10));
+
+    // ボスを特定時間に出現させる
+    for (const t of [40, 90, 140]) {
+      if (elapsed >= t && !gameState.taBossSpawned[t] && !spawnSystem.activeBoss) {
+        gameState.taBossSpawned[t] = true;
+        spawnSystem.queue.unshift('boss');
+        spawnSystem.isBossStage = true;
+      }
+    }
+    spawnSystem.isBossStage = !!spawnSystem.activeBoss;
+
     // 敵が少なくなったら補充
-    if (spawnSystem.queue.length === 0 && spawnSystem.activeEnemies.length < 4) {
-      const pool = CONFIG.stageEnemyPool(1);
-      for (let i = 0; i < 8; i++) spawnSystem.queue.push(pool[Math.floor(Math.random() * pool.length)]);
+    if (spawnSystem.queue.length === 0 && spawnSystem.activeEnemies.filter(e => e.type !== 'boss').length < 4) {
+      const count = 6 + Math.floor(effStage * 0.4);
+      for (let i = 0; i < count; i++) spawnSystem.queue.push(effPool[Math.floor(Math.random() * effPool.length)]);
+    }
+
+    // ショップピックアップ管理
+    gameState.taShopSpawnTimer -= dt;
+    if (gameState.taShopPickup) {
+      const pk = gameState.taShopPickup;
+      pk.timeLeft -= dt;
+      pk.blinkPhase += dt * 5;
+      if (pk.timeLeft <= 0) {
+        gameState.taShopPickup = null;
+      } else if (Math.hypot(player.x - pk.x, player.y - pk.y) < player.radius + pk.radius) {
+        gameState.taShopPickup = null;
+        gameState.taShopSpawnTimer = 30;
+        gameState.pendingShop = true;
+      }
+    }
+    if (!gameState.taShopPickup && gameState.taShopSpawnTimer <= 0 && !gameState.pendingShop) {
+      let px, py, tries = 0;
+      do {
+        px = 60 + Math.random() * (room.w - 120);
+        py = 60 + Math.random() * (room.h - 120);
+      } while (Math.hypot(px - player.x, py - player.y) < 160 && ++tries < 30);
+      gameState.taShopPickup = { x: px, y: py, radius: 20, timeLeft: 20, blinkPhase: 0 };
+      gameState.taShopSpawnTimer = 30;
     }
   }
 
@@ -699,8 +749,14 @@ function showShopOverlay() {
   const player = gameState.player;
   const isBoss = gameState.spawnSystem.isBossStage;
 
-  document.getElementById('shopStageLabel').textContent =
-    (isBoss ? 'ボス撃破ショップ' : 'ショップ') + ` — Stage ${gameState.stage}`;
+  if (gameState.mode === 'timeattack') {
+    document.getElementById('shopStageLabel').textContent = '🏪 ランダムショップ';
+    document.getElementById('shopNextBtn').textContent = '戻る ▶';
+  } else {
+    document.getElementById('shopStageLabel').textContent =
+      (isBoss ? 'ボス撃破ショップ' : 'ショップ') + ` — Stage ${gameState.stage}`;
+    document.getElementById('shopNextBtn').textContent = '次のステージへ ▶';
+  }
   document.getElementById('shopGold').textContent = `所持金: ${player.gold} G`;
 
   const el = document.getElementById('shopItems');
@@ -735,6 +791,11 @@ function buyItem(item) {
 function onShopNext() {
   touchPos = null;
   document.getElementById('shopOverlay').style.display = 'none';
+  if (gameState.mode === 'timeattack') {
+    gameState.isPaused = false;
+    updateHUD();
+    return;
+  }
   if (gameState.mode === 'normal' && gameState.stage >= 30) { triggerGameClear(); return; }
   gameState.progressionSystem.advanceStage(gameState);
   gameState.isPaused = false;
