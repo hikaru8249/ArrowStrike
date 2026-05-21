@@ -1,0 +1,18 @@
+{
+  "name": "ArrowStrike",
+  "short_name": "ArrowStrike",
+  "description": "弓使いのローグライクアクションゲーム",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0f1a",
+  "theme_color": "#1a1d35",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

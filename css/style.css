@@ -1,0 +1,381 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0d0f1a;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: 'Courier New', monospace;
+  color: #fff;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#gameWrapper {
+  position: relative;
+  width: min(390px, 100vw);
+  height: 100svh;
+  max-height: calc(min(390px, 100vw) * 700 / 390);
+}
+
+canvas {
+  display: block;
+  width: 100%; height: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── HUD ──────────────────────────────────────────────────────── */
+#hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 8px 12px 5px;
+  padding-top: calc(8px + env(safe-area-inset-top));
+  pointer-events: none;
+  background: rgba(0,0,0,0.5);
+}
+
+#progressRow { margin-bottom: 5px; }
+#progressBarBg { width: 100%; height: 4px; background: #1e2240; border-radius: 2px; }
+#progressBar   { height: 4px; background: #7F77DD; border-radius: 2px; transition: width .4s ease; }
+
+.hudRow {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 4px; font-size: 11px; color: #ccc; gap: 6px;
+}
+.hudLabel { white-space: nowrap; min-width: 48px; }
+
+#hpBarBg { flex:1; height:10px; background:#3a2020; border-radius:5px; overflow:hidden; }
+#hpBar   { height:100%; background:linear-gradient(90deg,#c83030,#e24b4a); border-radius:5px; transition:width .1s ease; }
+#xpBarBg { flex:1; height:7px;  background:#1a2240; border-radius:4px; overflow:hidden; }
+#xpBar   { height:100%; background:linear-gradient(90deg,#3a5acc,#5578dd); border-radius:4px; transition:width .2s ease; }
+
+/* ── Boss HP bar ─────────────────────────────────────────────── */
+#bossHpRow {
+  align-items: center;
+  margin-top: 3px;
+  gap: 6px;
+  font-size: 11px;
+}
+.bossLabel {
+  white-space: nowrap;
+  min-width: 40px;
+  color: #ff8888;
+  font-weight: bold;
+  font-size: 10px;
+}
+#bossHpBarBg {
+  flex: 1; height: 8px;
+  background: #3a1010;
+  border-radius: 4px; overflow: hidden;
+  border: 1px solid #661111;
+}
+#bossHpBar {
+  height: 100%;
+  background: linear-gradient(90deg, #661111, #cc2222);
+  border-radius: 4px;
+  transition: width 0.1s ease;
+}
+
+/* ── Bottom bar ───────────────────────────────────────────────── */
+#bottomBar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  padding-bottom: env(safe-area-inset-bottom);
+  min-height: 52px;
+  background: rgba(0,0,0,0.55);
+  gap: 10px;
+}
+
+.bBtn {
+  flex: 1;
+  padding: 8px 0;
+  background: #2a2f4a;
+  color: #aaa;
+  border: 1px solid #3d4470;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+  pointer-events: all;
+  transition: background .15s;
+}
+.bBtn:hover   { background: #3a3f6a; color: #fff; }
+.bBtn.accent  { background: #3a3065; color: #c0aaff; border-color: #6655bb; }
+.bBtn.accent:hover { background: #4d4080; color: #fff; }
+
+/* ── Level Up Overlay ─────────────────────────────────────────── */
+#levelUpOverlay {
+  display: none;
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.82);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px 12px;
+  z-index: 20;
+}
+
+#levelUpTitle {
+  font-size: 30px; font-weight: bold; color: #c0aaff;
+  text-shadow: 0 0 20px rgba(192,170,255,0.7);
+  letter-spacing: 2px;
+}
+#levelUpSub { font-size: 13px; color: #aaa; margin-bottom: 6px; }
+
+#skillCards {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.skill-card {
+  width: 100px;
+  background: #1e2240;
+  border: 2px solid #3d4470;
+  border-radius: 10px;
+  padding: 12px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s;
+  pointer-events: all;
+}
+.skill-card:hover { transform: scale(1.06); box-shadow: 0 0 16px rgba(127,119,221,0.5); }
+
+.skill-card.tier-common  { border-color: #666; }
+.skill-card.tier-rare    { border-color: #5578dd; box-shadow: 0 0 8px rgba(85,120,221,0.3); }
+.skill-card.tier-epic    { border-color: #9b59b6; box-shadow: 0 0 10px rgba(155,89,182,0.4); }
+
+.card-icon  { font-size: 26px; margin-bottom: 6px; }
+.card-name  { font-size: 11px; font-weight: bold; color: #fff; margin-bottom: 4px; line-height:1.3; }
+.card-desc  { font-size: 9px; color: #aaa; margin-bottom: 6px; line-height:1.4; }
+.card-footer { display:flex; justify-content:space-between; font-size:9px; }
+.card-tier  { color: #888; text-transform: uppercase; }
+.card-stack { color: #7F77DD; }
+
+/* ── Shop Overlay ─────────────────────────────────────────────── */
+#shopOverlay {
+  display: none;
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.88);
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 14px 16px;
+  gap: 10px;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.overlayTitle { font-size: 20px; font-weight: bold; color: #FAC775; letter-spacing: 1px; }
+.shopGoldLine { font-size: 13px; color: #FAC775; margin-bottom: 4px; }
+
+#shopItems {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.shop-item {
+  background: #1e2240;
+  border: 1px solid #3d4470;
+  border-radius: 8px;
+  padding: 10px 10px 8px;
+  cursor: pointer;
+  transition: background .12s;
+  pointer-events: all;
+}
+.shop-item:hover         { background: #2a3060; border-color: #5578dd; }
+.shop-item.disabled      { opacity: 0.45; cursor: default; pointer-events: none; }
+
+.shop-name   { font-size: 12px; font-weight: bold; color: #fff; margin-bottom: 3px; }
+.shop-desc   { font-size: 10px; color: #aaa; margin-bottom: 6px; line-height:1.4; }
+.shop-footer { display: flex; justify-content: space-between; font-size: 10px; }
+.shop-price  { color: #FAC775; }
+.shop-stack  { color: #7F77DD; }
+
+#shopNextBtn {
+  margin-top: 4px;
+  padding: 12px 28px;
+  background: #5DCAA5;
+  color: #0d1a15;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  cursor: pointer;
+  pointer-events: all;
+  transition: background .15s;
+}
+#shopNextBtn:hover { background: #7addbf; }
+
+/* ── Skill Tree Overlay ───────────────────────────────────────── */
+#skillTreeOverlay {
+  display: none;
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.9);
+  flex-direction: column;
+  padding: 0;
+  z-index: 20;
+}
+
+.overlayHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px 10px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #c0aaff;
+  border-bottom: 1px solid #3d4470;
+  background: rgba(0,0,0,0.4);
+}
+.closeBtn {
+  background: none; border: none; color: #888; font-size: 18px;
+  cursor: pointer; pointer-events: all; line-height: 1;
+}
+.closeBtn:hover { color: #fff; }
+
+#skillTreeContent {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px 14px 16px;
+}
+
+.st-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px solid #2a2f4a;
+  opacity: 0.45;
+}
+.st-row.acquired { opacity: 1; }
+
+.st-icon  { font-size: 22px; width: 28px; text-align: center; }
+.st-info  { flex: 1; }
+.st-name  { font-size: 12px; font-weight: bold; color: #fff; }
+.st-desc  { font-size: 10px; color: #888; margin-top: 2px; }
+.st-stack { font-size: 11px; color: #666; white-space: nowrap; }
+.st-stack.acquired { color: #7F77DD; font-weight: bold; }
+
+/* ── Joystick ────────────────────────────────────────────────── */
+#joystickBase {
+  position: absolute;
+  display: none;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+#joystickKnob {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(192,170,255,0.55), rgba(127,119,221,0.3));
+  border: 2px solid rgba(192, 170, 255, 0.45);
+  pointer-events: none;
+}
+
+/* ── Screen Flash ────────────────────────────────────────────── */
+#screenFlash {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0;
+}
+@keyframes flashRed  { 0% { background: rgba(220,50,50,0.42); opacity:1; } 100% { opacity:0; } }
+@keyframes flashGold { 0% { background: rgba(255,200,30,0.38); opacity:1; } 100% { opacity:0; } }
+#screenFlash.flash-red  { animation: flashRed  0.28s ease-out forwards; }
+#screenFlash.flash-gold { animation: flashGold 0.4s  ease-out forwards; }
+
+/* ── Settings Overlay ─────────────────────────────────────────── */
+#settingsOverlay {
+  display: none;
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.9);
+  flex-direction: column;
+  z-index: 20;
+}
+
+#settingsContent {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settingRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #2a2f4a;
+}
+
+.settingLabel {
+  font-size: 14px;
+  color: #ccc;
+}
+
+.toggleBtn {
+  padding: 5px 0;
+  width: 54px;
+  border: 1px solid #3d4470;
+  border-radius: 4px;
+  background: #2a2f4a;
+  color: #666;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+  pointer-events: all;
+  text-align: center;
+  transition: background .12s;
+}
+.toggleBtn.on {
+  background: #3a3065;
+  color: #c0aaff;
+  border-color: #6655bb;
+}
+
+/* ── Game Over / Clear ───────────────────────────────────────── */
+#gameOverOverlay {
+  display: none;
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.78);
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px;
+  z-index: 30;
+}
+
+#gameOverTitle { font-size: 38px; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 24px currentColor; }
+.gameOverStat  { font-size: 15px; color: #bbb; }
+
+#restartBtn {
+  margin-top: 10px;
+  padding: 12px 36px;
+  background: #7F77DD; color: #fff;
+  border: none; border-radius: 8px;
+  font-size: 17px; font-family: 'Courier New', monospace;
+  cursor: pointer; pointer-events: all; transition: background .15s;
+}
+#restartBtn:hover { background: #a09de8; }

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1d35">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ArrowStrike">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="manifest" href="manifest.json">
+  <title>ArrowStrike</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="gameWrapper">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div id="progressRow">
+        <div id="progressBarBg"><div id="progressBar" style="width:0%"></div></div>
+      </div>
+      <div class="hudRow">
+        <span class="hudLabel" id="levelText">Lv 1</span>
+        <div id="hpBarBg"><div id="hpBar" style="width:100%"></div></div>
+        <span id="hpText" style="min-width:70px;text-align:right">100 / 100</span>
+      </div>
+      <div class="hudRow">
+        <span class="hudLabel" id="stageText">Stage 1 / 30</span>
+        <div id="xpBarBg"><div id="xpBar" style="width:0%"></div></div>
+        <span id="xpText" style="min-width:70px;text-align:right">XP: 0 / 50</span>
+      </div>
+      <div class="hudRow">
+        <span id="killsText">Kills: 0</span>
+        <span id="goldText" style="color:#FAC775">0 G</span>
+      </div>
+      <!-- Boss HP bar (hidden when no boss) -->
+      <div id="bossHpRow" style="display:none">
+        <span id="bossLabel" class="bossLabel">BOSS</span>
+        <div id="bossHpBarBg"><div id="bossHpBar" style="width:100%"></div></div>
+        <span id="bossHpText" style="min-width:70px;text-align:right;font-size:10px">-</span>
+      </div>
+    </div>
+
+    <!-- Bottom Buttons -->
+    <div id="bottomBar">
+      <button class="bBtn" onclick="if(confirm('リセットしますか？')) restartGame()">リセット</button>
+      <button class="bBtn accent" onclick="toggleSkillTree()">スキルツリー</button>
+      <button class="bBtn" onclick="toggleSettings()">設定</button>
+    </div>
+
+    <!-- Joystick -->
+    <div id="joystickBase">
+      <div id="joystickKnob"></div>
+    </div>
+
+    <!-- Screen Flash -->
+    <div id="screenFlash"></div>
+
+    <!-- Level Up Overlay -->
+    <div id="levelUpOverlay">
+      <div id="levelUpTitle">LEVEL UP!</div>
+      <div id="levelUpSub"></div>
+      <div id="skillCards"></div>
+    </div>
+
+    <!-- Shop Overlay -->
+    <div id="shopOverlay">
+      <div id="shopStageLabel" class="overlayTitle">ショップ</div>
+      <div id="shopGold" class="shopGoldLine">所持金: 0 G</div>
+      <div id="shopItems"></div>
+      <button id="shopNextBtn" onclick="onShopNext()">次のステージへ ▶</button>
+    </div>
+
+    <!-- Skill Tree Overlay -->
+    <div id="skillTreeOverlay">
+      <div class="overlayHeader">
+        <span>スキルツリー</span>
+        <button class="closeBtn" onclick="toggleSkillTree()">✕</button>
+      </div>
+      <div id="skillTreeContent"></div>
+    </div>
+
+    <!-- Settings Overlay -->
+    <div id="settingsOverlay">
+      <div class="overlayHeader">
+        <span>設定</span>
+        <button class="closeBtn" onclick="toggleSettings()">✕</button>
+      </div>
+      <div id="settingsContent">
+        <div class="settingRow">
+          <span class="settingLabel">効果音 (SFX)</span>
+          <button class="toggleBtn on" id="sfxToggle" onclick="toggleSetting('sfx')">ON</button>
+        </div>
+        <div class="settingRow">
+          <span class="settingLabel">BGM</span>
+          <button class="toggleBtn on" id="bgmToggle" onclick="toggleSetting('bgm')">ON</button>
+        </div>
+        <div class="settingRow">
+          <span class="settingLabel">バイブレーション</span>
+          <button class="toggleBtn on" id="hapticsToggle" onclick="toggleSetting('haptics')">ON</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over / Clear Overlay -->
+    <div id="gameOverOverlay">
+      <div id="gameOverTitle" style="color:#e24b4a">GAME OVER</div>
+      <div class="gameOverStat" id="gameOverStage">到達ステージ: 1</div>
+      <div class="gameOverStat" id="gameOverKills">撃破数: 0</div>
+      <div class="gameOverStat" id="gameOverBest" style="color:#FAC775">ベスト: 1</div>
+      <button id="restartBtn" onclick="restartGame()">リスタート</button>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/systems.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+</body>
+</html>
