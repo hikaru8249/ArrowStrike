@@ -459,7 +459,13 @@ function update(dt, now) {
     }
     if (doorSystem.checkEnter(player)) {
       doorSystem.isOpen = false;
-      gameState.pendingShop = true;
+      // 約35%の確率でショップ。それ以外はそのまま次ステージへ
+      if (Math.random() < 0.35) {
+        gameState.pendingShop = true;
+      } else {
+        if (gameState.mode === 'normal' && gameState.stage >= 30) { triggerGameClear(); }
+        else { gameState.progressionSystem.advanceStage(gameState); updateHUD(); }
+      }
     }
   }
 }
@@ -694,7 +700,12 @@ function updateHUD() {
 
 // ─── Level-up overlay ─────────────────────────────────────────────────────────
 
+function totalSkillStacks(player) {
+  return Object.values(player.skillStacks).reduce((a, b) => a + b, 0);
+}
+
 function getRandomSkillCards(player) {
+  if (totalSkillStacks(player) >= CONFIG.MAX_SKILL_STACKS) return [];
   const available = CONFIG.SKILLS.filter(s => (player.skillStacks[s.id] || 0) < s.max);
   if (!available.length) return [];
   const pool = [];
@@ -716,6 +727,18 @@ function showLevelUpOverlay() {
   gameState.isPaused = true;
   audioSystem.levelUp();
   const player = gameState.player;
+  if (totalSkillStacks(player) >= CONFIG.MAX_SKILL_STACKS) {
+    gameState.pendingLevelUps = 0;
+    document.getElementById('levelUpTitle').textContent = 'LEVEL UP!';
+    document.getElementById('levelUpSub').textContent = `Lv ${player.level} 到達 ― スキル上限 (${CONFIG.MAX_SKILL_STACKS}/${CONFIG.MAX_SKILL_STACKS})`;
+    document.getElementById('skillCards').innerHTML = '<div style="color:#aaa;font-size:13px;padding:16px 0">スキル獲得上限に達しました</div>';
+    document.getElementById('levelUpOverlay').style.display = 'flex';
+    setTimeout(() => {
+      document.getElementById('levelUpOverlay').style.display = 'none';
+      _afterLevelUp();
+    }, 1400);
+    return;
+  }
   const cards  = getRandomSkillCards(player);
   if (!cards.length) { gameState.pendingLevelUps--; _afterLevelUp(); return; }
 
@@ -794,7 +817,8 @@ function showShopOverlay(regenerate = true) {
   el.innerHTML = '';
   for (const item of gameState.currentShopPool) {
     const stacks    = item.isSkill ? (player.skillStacks[item.id] || 0) : (player.shopStacks[item.id] || 0);
-    const atMax     = stacks >= item.max;
+    const skillCapHit = item.isSkill && totalSkillStacks(player) >= CONFIG.MAX_SKILL_STACKS;
+    const atMax     = stacks >= item.max || skillCapHit;
     const canAfford = player.gold >= item.price;
     const disabled  = atMax || !canAfford;
     const div = document.createElement('div');
@@ -818,6 +842,7 @@ function buyItem(item) {
   const player = gameState.player;
   const stacks = item.isSkill ? (player.skillStacks[item.id] || 0) : (player.shopStacks[item.id] || 0);
   if (player.gold < item.price || stacks >= item.max) return;
+  if (item.isSkill && totalSkillStacks(player) >= CONFIG.MAX_SKILL_STACKS) return;
   player.gold -= item.price;
   item.apply(player);
   if (item.isSkill) {

@@ -3,6 +3,7 @@ const CONFIG = {
   ROOM: { x: 20, y: 150, w: 350, h: 470 },
   DOOR: { w: 60, h: 28 },
   PLAYER: { hp: 100, atk: 18, fireRateMs: 380, speed: 2.8, range: 220, radius: 16 },
+  MAX_SKILL_STACKS: 12,
   SPAWN: { minDist: 130, maxActive: 12, intervalMin: 35, intervalMax: 100, fadeMs: 200 },
   ARROW:  { speed: 480, radius: 5, length: 16, width: 4 },
   BULLET: { radius: 6 },
