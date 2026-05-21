@@ -139,6 +139,8 @@ function update(dt, now) {
     const elapsed = 180 - gameState.timeLeft;
     const effStage = 1 + Math.floor(elapsed / 12);
     spawnSystem.stage = effStage;
+    // 30秒ごとに体力+25%、最大3倍まで増加
+    spawnSystem.hpScale = 1 + Math.floor(elapsed / 30) * 0.25;
     const effPool = CONFIG.stageEnemyPool(Math.min(effStage, 10));
 
     // ボスを特定時間に出現させる

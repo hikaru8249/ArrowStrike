@@ -5,10 +5,12 @@ class SpawnSystem {
     this.stage = 1; this._room = CONFIG.ROOM;
     this.isBossStage = false;
     this.justSpawnedBossAt = null;
+    this.hpScale = 1.0;
   }
 
   setupStage(stage, room) {
     this.stage = stage; this._room = room;
+    this.hpScale = 1.0;
     this.activeEnemies = [];
     this.frameCount = 0; this.interval = this._randInterval();
     this.isBossStage = (stage % 5 === 0);
@@ -83,7 +85,9 @@ class SpawnSystem {
 
     this.queue.shift();
     const pos = this._pickPos(playerPos, nextType === 'boss' ? 50 : CONFIG.ENEMY_NORMAL?.radius ?? 14);
-    this.activeEnemies.push(new Enemy(pos.x, pos.y, this.stage, nextType));
+    const e = new Enemy(pos.x, pos.y, this.stage, nextType);
+    if (this.hpScale !== 1.0) { e.maxHp = Math.round(e.maxHp * this.hpScale); e.hp = e.maxHp; }
+    this.activeEnemies.push(e);
     if (nextType.startsWith('boss')) this.justSpawnedBossAt = pos;
     this.frameCount = 0;
     this.interval = this._randInterval();
