@@ -601,7 +601,7 @@ function updateHUD() {
     document.getElementById('bossHpBar').style.width = pct + '%';
     document.getElementById('bossHpBar').style.background =
       boss.isPhase2 ? 'linear-gradient(90deg,#881111,#ff4444)' : 'linear-gradient(90deg,#661111,#cc2222)';
-    document.getElementById('bossHpText').textContent = `${Math.max(0, boss.hp)} / ${boss.maxHp}`;
+    document.getElementById('bossHpText').textContent = `${Math.max(0, Math.floor(boss.hp))} / ${boss.maxHp}`;
     document.getElementById('bossLabel').textContent  = boss.isPhase2 ? 'BOSS ★' : 'BOSS';
   } else {
     bossRow.style.display = 'none';
