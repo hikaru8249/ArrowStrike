@@ -211,6 +211,16 @@ const CONFIG = {
     { id: 'sr', name: '回復薬',    desc: 'HP 50% 回復',          price: 25, max: 99,
       apply: p => { p.hp = Math.min(p.maxHp, p.hp + Math.floor(p.maxHp * 0.5)); } },
     { id: 'sg', name: '金矢尻',    desc: 'ゴールド獲得 +30%',    price: 50, max: 3,
-      apply: p => { p.goldMul = +(p.goldMul + 0.3).toFixed(1); } }
-  ]
+      apply: p => { p.goldMul = +(p.goldMul + 0.3).toFixed(1); } },
+    { id: 'shr', name: '完全回復',  desc: 'HP を全回復',           price: 65, max: 99,
+      apply: p => { p.hp = p.maxHp; } },
+    { id: 'ssd', name: 'シールド',  desc: 'シールド+1（被弾1回吸収）', price: 55, max: 99,
+      apply: p => { p.shieldCount += 1; } },
+    { id: 'srn', name: '射程強化',  desc: '射程 +15%',             price: 40, max: 5,
+      apply: p => { p.range = +(p.range * 1.15).toFixed(1); } },
+    { id: 'scr', name: 'クリ強化',  desc: 'クリ率 +10%',           price: 50, max: 5,
+      apply: p => { p.crit = Math.min(1.0, +(p.crit + 0.10).toFixed(2)); } }
+  ],
+
+  SKILL_SHOP_PRICES: { COMMON: 60, RARE: 95, EPIC: 145 }
 };

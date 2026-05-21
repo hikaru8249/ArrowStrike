@@ -10,6 +10,7 @@ const gameState = {
   taShopPickup: null,
   taShopSpawnTimer: 25,
   taBossSpawned: {},
+  currentShopPool: [],
   player: null,
   spawnSystem:       null,
   combatSystem:      null,
@@ -744,7 +745,26 @@ function _afterLevelUp() {
 
 // ─── Shop overlay ─────────────────────────────────────────────────────────────
 
-function showShopOverlay() {
+function _buildShopPool(player) {
+  const prices = CONFIG.SKILL_SHOP_PRICES;
+  const pool = [];
+  for (const item of CONFIG.SHOP_ITEMS) {
+    if ((player.shopStacks[item.id] || 0) < item.max)
+      pool.push({ ...item, isSkill: false });
+  }
+  for (const skill of CONFIG.SKILLS) {
+    if ((player.skillStacks[skill.id] || 0) < skill.max)
+      pool.push({ id: skill.id, name: skill.name, desc: skill.desc, icon: skill.icon,
+        price: prices[skill.tier], max: skill.max, tier: skill.tier,
+        isSkill: true, apply: skill.apply });
+  }
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, 6);
+}
+
+function showShopOverlay(regenerate = true) {
   gameState.isPaused = true; gameState.pendingShop = false;
   const player = gameState.player;
   const isBoss = gameState.spawnSystem.isBossStage;
@@ -759,17 +779,23 @@ function showShopOverlay() {
   }
   document.getElementById('shopGold').textContent = `所持金: ${player.gold} G`;
 
+  if (regenerate) gameState.currentShopPool = _buildShopPool(player);
+
   const el = document.getElementById('shopItems');
   el.innerHTML = '';
-  for (const item of CONFIG.SHOP_ITEMS) {
-    const stacks   = player.shopStacks[item.id] || 0;
-    const atMax    = stacks >= item.max;
-    const canAfford= player.gold >= item.price;
-    const disabled = atMax || !canAfford;
+  for (const item of gameState.currentShopPool) {
+    const stacks    = item.isSkill ? (player.skillStacks[item.id] || 0) : (player.shopStacks[item.id] || 0);
+    const atMax     = stacks >= item.max;
+    const canAfford = player.gold >= item.price;
+    const disabled  = atMax || !canAfford;
     const div = document.createElement('div');
-    div.className = 'shop-item' + (disabled ? ' disabled' : '');
+    const tierClass = item.isSkill ? ` shop-skill shop-tier-${item.tier.toLowerCase()}` : '';
+    div.className = 'shop-item' + tierClass + (disabled ? ' disabled' : '');
+    const iconHtml  = item.icon ? `<span class="shop-icon">${item.icon}</span>` : '';
+    const tierBadge = item.isSkill
+      ? `<span class="shop-tier-badge tier-${item.tier.toLowerCase()}">${item.tier}</span>` : '';
     div.innerHTML =
-      `<div class="shop-name">${item.name}</div>` +
+      `<div class="shop-name">${iconHtml}${item.name}${tierBadge}</div>` +
       `<div class="shop-desc">${item.desc}</div>` +
       `<div class="shop-footer"><span class="shop-price">${item.price} G</span>` +
       `<span class="shop-stack">${atMax ? 'MAX' : (!canAfford ? '不足' : stacks + '/' + item.max)}</span></div>`;
@@ -781,11 +807,16 @@ function showShopOverlay() {
 
 function buyItem(item) {
   const player = gameState.player;
-  if (player.gold < item.price || (player.shopStacks[item.id] || 0) >= item.max) return;
+  const stacks = item.isSkill ? (player.skillStacks[item.id] || 0) : (player.shopStacks[item.id] || 0);
+  if (player.gold < item.price || stacks >= item.max) return;
   player.gold -= item.price;
   item.apply(player);
-  player.shopStacks[item.id] = (player.shopStacks[item.id] || 0) + 1;
-  showShopOverlay();
+  if (item.isSkill) {
+    player.skillStacks[item.id] = stacks + 1;
+  } else {
+    player.shopStacks[item.id] = stacks + 1;
+  }
+  showShopOverlay(false);
 }
 
 function onShopNext() {

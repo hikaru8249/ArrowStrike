@@ -197,11 +197,19 @@ canvas {
 .shop-item:hover         { background: #2a3060; border-color: #5578dd; }
 .shop-item.disabled      { opacity: 0.45; cursor: default; pointer-events: none; }
 
-.shop-name   { font-size: 12px; font-weight: bold; color: #fff; margin-bottom: 3px; }
+.shop-name   { font-size: 12px; font-weight: bold; color: #fff; margin-bottom: 3px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
 .shop-desc   { font-size: 10px; color: #aaa; margin-bottom: 6px; line-height:1.4; }
 .shop-footer { display: flex; justify-content: space-between; font-size: 10px; }
 .shop-price  { color: #FAC775; }
 .shop-stack  { color: #7F77DD; }
+.shop-icon   { font-size: 14px; flex-shrink: 0; }
+.shop-skill.shop-tier-common  { border-left: 3px solid #666; }
+.shop-skill.shop-tier-rare    { border-left: 3px solid #5578dd; }
+.shop-skill.shop-tier-epic    { border-left: 3px solid #9b59b6; }
+.shop-tier-badge { font-size: 8px; padding: 1px 5px; border-radius: 3px; font-weight: bold; white-space: nowrap; }
+.shop-tier-badge.tier-common  { background: #333; color: #aaa; }
+.shop-tier-badge.tier-rare    { background: #1a2a5a; color: #7fa0ff; }
+.shop-tier-badge.tier-epic    { background: #2d1a4a; color: #c070ff; }
 
 #shopNextBtn {
   margin-top: 4px;
