@@ -78,17 +78,19 @@ class SpawnSystem {
     this.frameCount++;
     if (this.frameCount < this.interval || this.queue.length === 0) return;
 
-    const nextType = this.queue[0];
-    const minionCount = this.activeEnemies.filter(e => !e.type.startsWith('boss')).length;
-    const canSpawn = nextType.startsWith('boss') || minionCount < CONFIG.SPAWN.maxActive;
-    if (!canSpawn) return;
-
-    this.queue.shift();
-    const pos = this._pickPos(playerPos, nextType === 'boss' ? 50 : CONFIG.ENEMY_NORMAL?.radius ?? 14);
-    const e = new Enemy(pos.x, pos.y, this.stage, nextType);
-    if (this.hpScale !== 1.0) { e.maxHp = Math.round(e.maxHp * this.hpScale); e.hp = e.maxHp; }
-    this.activeEnemies.push(e);
-    if (nextType.startsWith('boss')) this.justSpawnedBossAt = pos;
+    const batch = this.stage <= 3 ? 1 : this.stage <= 7 ? 2 : 3;
+    for (let b = 0; b < batch && this.queue.length > 0; b++) {
+      const nextType = this.queue[0];
+      const minionCount = this.activeEnemies.filter(e => !e.type.startsWith('boss')).length;
+      const canSpawn = nextType.startsWith('boss') || minionCount < CONFIG.SPAWN.maxActive;
+      if (!canSpawn) break;
+      this.queue.shift();
+      const pos = this._pickPos(playerPos, nextType.startsWith('boss') ? 50 : CONFIG.ENEMY_NORMAL?.radius ?? 14);
+      const e = new Enemy(pos.x, pos.y, this.stage, nextType);
+      if (this.hpScale !== 1.0) { e.maxHp = Math.round(e.maxHp * this.hpScale); e.hp = e.maxHp; }
+      this.activeEnemies.push(e);
+      if (nextType.startsWith('boss')) { this.justSpawnedBossAt = pos; break; }
+    }
     this.frameCount = 0;
     this.interval = this._randInterval();
   }

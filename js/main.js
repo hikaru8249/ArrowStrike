@@ -155,8 +155,8 @@ function update(dt, now) {
     spawnSystem.isBossStage = !!spawnSystem.activeBoss;
 
     // 敵が少なくなったら補充
-    if (spawnSystem.queue.length === 0 && spawnSystem.activeEnemies.filter(e => e.type !== 'boss').length < 4) {
-      const count = 6 + Math.floor(effStage * 0.4);
+    if (spawnSystem.queue.length === 0 && spawnSystem.activeEnemies.filter(e => e.type !== 'boss').length < 8) {
+      const count = 9 + Math.floor(effStage * 0.5);
       for (let i = 0; i < count; i++) spawnSystem.queue.push(effPool[Math.floor(Math.random() * effPool.length)]);
     }
 
