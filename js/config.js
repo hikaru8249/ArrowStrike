@@ -28,6 +28,9 @@ const CONFIG = {
   METEOR_BLAST_RADIUS: 55,
   SLOW_FIELD_RADIUS: 80,
   COIN_MAGNET_RADIUS: 90,
+  TIMEATTACK_ROOM: { x: 0, y: 0, w: 1100, h: 1100 },
+  TIMEATTACK_VIEWPORT: { x: 20, y: 150, w: 350, h: 470 },
+  VISIBILITY_RADIUS: 140,
   COLORS: {
     bg: '#1a1d2e', player: '#7F77DD', wall: '#23294a', wallBorder: '#3d4470',
     doorClosed: '#4a3060', doorOpen: '#5DCAA5', arrow: '#FFD966', coin: '#FAC775'

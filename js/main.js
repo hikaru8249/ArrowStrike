@@ -6,6 +6,7 @@ const gameState = {
   pendingShop: false,
   mode: 'normal',   // 'normal' | 'endless' | 'timeattack'
   timeLeft: 180,
+  camera: { x: 0, y: 0 },
   player: null,
   spawnSystem:       null,
   combatSystem:      null,
@@ -44,11 +45,22 @@ function startBGMOnce() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 function initGame() {
-  const room = CONFIG.ROOM;
-  gameState.player           = new Player(room.x + room.w / 2, room.y + room.h - 50);
+  const isTA = gameState.mode === 'timeattack';
+  const room = isTA ? CONFIG.TIMEATTACK_ROOM : CONFIG.ROOM;
+  const startY = isTA ? room.h / 2 : room.y + room.h - 50;
+  gameState.player           = new Player(room.x + room.w / 2, startY);
   gameState.stage            = 1;
   gameState.isGameOver       = false;
   gameState.timeLeft         = gameState.mode === 'timeattack' ? 180 : 0;
+  if (isTA) {
+    const vp = CONFIG.TIMEATTACK_VIEWPORT;
+    gameState.camera = {
+      x: Math.max(0, Math.min(room.w - vp.w, room.w / 2 - vp.w / 2)),
+      y: Math.max(0, Math.min(room.h - vp.h, room.h / 2 - vp.h / 2))
+    };
+  } else {
+    gameState.camera = { x: 0, y: 0 };
+  }
   gameState.isPaused         = false;
   gameState.pendingLevelUps  = 0;
   gameState.pendingShop      = false;
@@ -68,7 +80,7 @@ function initGame() {
   updateSettingsUI();
 
   gameState.spawnSystem.setupStage(1, room);
-  gameState.doorSystem.setup(room);
+  if (!isTA) gameState.doorSystem.setup(room);
 
   touchPos = null;
   joystickDir = null; joystickActive = false;
@@ -102,11 +114,21 @@ function gameLoop(timestamp) {
 
 function update(dt, now) {
   const { player, spawnSystem, combatSystem, coinSystem, doorSystem, progressionSystem } = gameState;
-  const room = CONFIG.ROOM;
+  const isTA = gameState.mode === 'timeattack';
+  const room = isTA ? CONFIG.TIMEATTACK_ROOM : CONFIG.ROOM;
 
-  if (gameState.mode === 'timeattack') {
+  if (isTA) {
     gameState.timeLeft = Math.max(0, gameState.timeLeft - dt);
     if (gameState.timeLeft <= 0) { triggerTimeUp(); return; }
+    // カメラをプレーヤーに追従
+    const vp = CONFIG.TIMEATTACK_VIEWPORT;
+    gameState.camera.x = Math.max(0, Math.min(room.w - vp.w, player.x - vp.w / 2));
+    gameState.camera.y = Math.max(0, Math.min(room.h - vp.h, player.y - vp.h / 2));
+    // 敵が少なくなったら補充
+    if (spawnSystem.queue.length === 0 && spawnSystem.activeEnemies.length < 4) {
+      const pool = CONFIG.stageEnemyPool(1);
+      for (let i = 0; i < 8; i++) spawnSystem.queue.push(pool[Math.floor(Math.random() * pool.length)]);
+    }
   }
 
   if (joystickDir) {
@@ -365,18 +387,20 @@ function update(dt, now) {
     particleSystem.levelUp(player.x, player.y);
   }
 
-  // Door
-  doorSystem.update(dt, spawnSystem.allDead(), spawnSystem.enemiesRemaining);
-  if (doorSystem.justOpened) {
-    particleSystem.doorOpen(
-      doorSystem.rect.x + doorSystem.rect.w / 2,
-      doorSystem.rect.y + doorSystem.rect.h / 2
-    );
-    audioSystem.doorOpen();
-  }
-  if (doorSystem.checkEnter(player)) {
-    doorSystem.isOpen = false;
-    gameState.pendingShop = true;
+  // Door（タイムアタックはスキップ）
+  if (!isTA) {
+    doorSystem.update(dt, spawnSystem.allDead(), spawnSystem.enemiesRemaining);
+    if (doorSystem.justOpened) {
+      particleSystem.doorOpen(
+        doorSystem.rect.x + doorSystem.rect.w / 2,
+        doorSystem.rect.y + doorSystem.rect.h / 2
+      );
+      audioSystem.doorOpen();
+    }
+    if (doorSystem.checkEnter(player)) {
+      doorSystem.isOpen = false;
+      gameState.pendingShop = true;
+    }
   }
 }
 

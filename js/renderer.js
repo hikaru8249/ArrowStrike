@@ -7,13 +7,24 @@ class Renderer {
   draw(gameState) {
     const { ctx } = this;
     const { player, spawnSystem, combatSystem, coinSystem, doorSystem } = gameState;
-    const room = CONFIG.ROOM;
+    const isTA = gameState.mode === 'timeattack';
+    const room  = isTA ? CONFIG.TIMEATTACK_ROOM     : CONFIG.ROOM;
+    const vp    = CONFIG.TIMEATTACK_VIEWPORT;
+    const cam   = gameState.camera || { x: 0, y: 0 };
 
     ctx.fillStyle = CONFIG.COLORS.bg;
     ctx.fillRect(0, 0, this.w, this.h);
 
+    if (isTA) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(vp.x, vp.y, vp.w, vp.h);
+      ctx.clip();
+      ctx.translate(vp.x - cam.x, vp.y - cam.y);
+    }
+
     this._drawRoom(room);
-    doorSystem.draw(ctx);
+    if (!isTA) doorSystem.draw(ctx);
 
     for (const c of coinSystem.coins)          { if (c.visible) this._drawCoin(c); }
     for (const b of combatSystem.enemyBullets) this._drawEnemyBullet(b);
@@ -32,7 +43,7 @@ class Renderer {
       ctx.fillRect(room.x, room.y, room.w, room.h);
     }
 
-    // Shield indicator
+    // Shield indicator（カメラ変換が有効な間に描画）
     if (player.shieldCount > 0) {
       ctx.strokeStyle = 'rgba(255,220,80,0.85)';
       ctx.lineWidth = 3;
@@ -43,6 +54,21 @@ class Renderer {
       ctx.font = 'bold 10px monospace';
       ctx.textAlign = 'center';
       ctx.fillText('🛡' + player.shieldCount, player.x, player.y - player.radius - 10);
+    }
+
+    if (isTA) {
+      ctx.restore();
+      // 霧（視界外を暗くする）
+      const spx = vp.x + (player.x - cam.x);
+      const spy = vp.y + (player.y - cam.y);
+      const vis = CONFIG.VISIBILITY_RADIUS;
+      const fogR = Math.hypot(vp.w, vp.h);
+      const fog = ctx.createRadialGradient(spx, spy, vis * 0.55, spx, spy, fogR);
+      fog.addColorStop(0,   'rgba(10,12,26,0)');
+      fog.addColorStop(0.35,'rgba(10,12,26,0)');
+      fog.addColorStop(1,   'rgba(10,12,26,0.97)');
+      ctx.fillStyle = fog;
+      ctx.fillRect(vp.x, vp.y, vp.w, vp.h);
     }
   }
 
