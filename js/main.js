@@ -4,6 +4,8 @@ const gameState = {
   isPaused: false,
   pendingLevelUps: 0,
   pendingShop: false,
+  mode: 'normal',   // 'normal' | 'endless' | 'timeattack'
+  timeLeft: 180,
   player: null,
   spawnSystem:       null,
   combatSystem:      null,
@@ -46,6 +48,7 @@ function initGame() {
   gameState.player           = new Player(room.x + room.w / 2, room.y + room.h - 50);
   gameState.stage            = 1;
   gameState.isGameOver       = false;
+  gameState.timeLeft         = gameState.mode === 'timeattack' ? 180 : 0;
   gameState.isPaused         = false;
   gameState.pendingLevelUps  = 0;
   gameState.pendingShop      = false;
@@ -100,6 +103,11 @@ function gameLoop(timestamp) {
 function update(dt, now) {
   const { player, spawnSystem, combatSystem, coinSystem, doorSystem, progressionSystem } = gameState;
   const room = CONFIG.ROOM;
+
+  if (gameState.mode === 'timeattack') {
+    gameState.timeLeft = Math.max(0, gameState.timeLeft - dt);
+    if (gameState.timeLeft <= 0) { triggerTimeUp(); return; }
+  }
 
   if (joystickDir) {
     player.move(player.x + joystickDir.x * 200, player.y + joystickDir.y * 200, dt, room);
@@ -520,8 +528,43 @@ function triggerGameClear() {
 
 function restartGame() {
   bgmStarted = false;
+  audioSystem.stopBGM();
   initGame();
   lastTime = performance.now();
+}
+
+function showStartScreen() {
+  ['gameOverOverlay','levelUpOverlay','shopOverlay','skillTreeOverlay','settingsOverlay']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  audioSystem.stopBGM();
+  bgmStarted = false;
+  gameState.isGameOver = true;
+  const best = GameStorage.getBestStage();
+  document.getElementById('startBest').textContent = best > 0 ? `ノーマル ベスト: Stage ${best}` : '';
+  document.getElementById('startOverlay').style.display = 'flex';
+}
+
+function startGame(mode) {
+  document.getElementById('startOverlay').style.display = 'none';
+  gameState.mode = mode;
+  bgmStarted = false;
+  initGame();
+  lastTime = performance.now();
+}
+
+function triggerTimeUp() {
+  gameState.isGameOver = true;
+  GameStorage.addKills(gameState.player.kills);
+  GameStorage.incrementRuns();
+  audioSystem.gameOver();
+  audioSystem.stopBGM();
+  document.getElementById('gameOverTitle').textContent  = 'TIME UP!';
+  document.getElementById('gameOverTitle').style.color  = '#e88844';
+  document.getElementById('gameOverStage').textContent  = `スコア: ${gameState.player.kills} kill`;
+  document.getElementById('gameOverKills').textContent  = `到達ステージ: ${gameState.stage}`;
+  document.getElementById('gameOverBest').textContent   = '';
+  document.getElementById('gameOverOverlay').style.display = 'flex';
+  renderer.draw(gameState);
 }
 
 // ─── HUD ─────────────────────────────────────────────────────────────────────
@@ -534,11 +577,21 @@ function updateHUD() {
   document.getElementById('hpText').textContent   = `${p.hp} / ${p.maxHp}`;
   document.getElementById('xpBar').style.width    = (p.xp / p.xpToNext * 100) + '%';
   document.getElementById('levelText').textContent = `Lv ${p.level}`;
-  document.getElementById('stageText').textContent = `Stage ${gameState.stage} / 30`;
+  if (gameState.mode === 'timeattack') {
+    const m = Math.floor(gameState.timeLeft / 60);
+    const s = Math.floor(gameState.timeLeft % 60).toString().padStart(2, '0');
+    document.getElementById('stageText').textContent = `⏱ ${m}:${s}`;
+    document.getElementById('progressBar').style.width = (gameState.timeLeft / 180 * 100) + '%';
+  } else if (gameState.mode === 'endless') {
+    document.getElementById('stageText').textContent = `Stage ${gameState.stage} / ∞`;
+    document.getElementById('progressBar').style.width = '100%';
+  } else {
+    document.getElementById('stageText').textContent = `Stage ${gameState.stage} / 30`;
+    document.getElementById('progressBar').style.width = ((gameState.stage - 1) / 30 * 100) + '%';
+  }
   document.getElementById('killsText').textContent  = `Kills: ${p.kills}`;
   document.getElementById('xpText').textContent     = `XP: ${p.xp} / ${p.xpToNext}`;
   document.getElementById('goldText').textContent   = `${p.gold} G`;
-  document.getElementById('progressBar').style.width = ((gameState.stage - 1) / 30 * 100) + '%';
 
   const boss    = sp ? sp.activeBoss : null;
   const bossRow = document.getElementById('bossHpRow');
@@ -658,7 +711,7 @@ function buyItem(item) {
 function onShopNext() {
   touchPos = null;
   document.getElementById('shopOverlay').style.display = 'none';
-  if (gameState.stage >= 30) { triggerGameClear(); return; }
+  if (gameState.mode === 'normal' && gameState.stage >= 30) { triggerGameClear(); return; }
   gameState.progressionSystem.advanceStage(gameState);
   gameState.isPaused = false;
   updateHUD();
@@ -752,10 +805,12 @@ window.addEventListener('load', () => {
   canvas.width  = CONFIG.CANVAS.width;
   canvas.height = CONFIG.CANVAS.height;
 
-  renderer     = new Renderer(canvas);
-  audioSystem  = new AudioSystem();
+  renderer    = new Renderer(canvas);
+  audioSystem = new AudioSystem();
+  settings    = GameStorage.getSettings();
   initGame();
   initJoystick();
+  showStartScreen();
 
   lastTime = performance.now();
   requestAnimationFrame(gameLoop);

@@ -105,6 +105,37 @@
       </div>
     </div>
 
+    <!-- Start Screen -->
+    <div id="startOverlay">
+      <div id="startLogo">🏹</div>
+      <div id="startTitle">ArrowStrike</div>
+      <div id="startSub">弓使いのローグライク</div>
+      <div id="startBest"></div>
+      <div id="modeCards">
+        <div class="mode-card mode-normal" onclick="startGame('normal')">
+          <div class="mode-icon">🏹</div>
+          <div class="mode-info">
+            <div class="mode-name">ノーマル</div>
+            <div class="mode-desc">30ステージ踏破を目指せ</div>
+          </div>
+        </div>
+        <div class="mode-card mode-endless" onclick="startGame('endless')">
+          <div class="mode-icon">♾️</div>
+          <div class="mode-info">
+            <div class="mode-name">エンドレス</div>
+            <div class="mode-desc">限界まで生き残れ</div>
+          </div>
+        </div>
+        <div class="mode-card mode-timeattack" onclick="startGame('timeattack')">
+          <div class="mode-icon">⏱️</div>
+          <div class="mode-info">
+            <div class="mode-name">タイムアタック</div>
+            <div class="mode-desc">3分間で最多キルを目指せ</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Game Over / Clear Overlay -->
     <div id="gameOverOverlay">
       <div id="gameOverTitle" style="color:#e24b4a">GAME OVER</div>
@@ -112,6 +143,7 @@
       <div class="gameOverStat" id="gameOverKills">撃破数: 0</div>
       <div class="gameOverStat" id="gameOverBest" style="color:#FAC775">ベスト: 1</div>
       <button id="restartBtn" onclick="restartGame()">リスタート</button>
+      <button id="modeSelectBtn" onclick="showStartScreen()">モード選択</button>
     </div>
   </div>
 
