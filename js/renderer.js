@@ -30,6 +30,7 @@ class Renderer {
     for (const b of combatSystem.enemyBullets) this._drawEnemyBullet(b);
     for (const bm of combatSystem.beams)       this._drawBeam(bm, room);
     for (const m of combatSystem.meteors)      { if (!m.exploded) this._drawMeteor(m); }
+    for (const b of combatSystem.bombs)        { if (!b.exploded) this._drawBomb(b); }
     for (const a of combatSystem.arrows)       this._drawArrow(a);
     for (const s of combatSystem.strikes)      this._drawStrike(s);
     for (const orb of (gameState.orbs || []))  this._drawOrb(orb, player);
@@ -114,7 +115,7 @@ class Renderer {
         ctx.save();
         ctx.translate(ix, iy); ctx.rotate(angle);
         ctx.globalAlpha = 0.85;
-        ctx.fillStyle = e.type === 'boss' ? '#ff4444' : e.color;
+        ctx.fillStyle = e.type.startsWith('boss') ? '#ff4444' : e.color;
         ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-5, -5); ctx.lineTo(-5, 5);
         ctx.closePath(); ctx.fill();
         ctx.globalAlpha = 1;
@@ -480,7 +481,7 @@ class Renderer {
     const ctx = this.ctx;
     ctx.globalAlpha = enemy.alpha;
 
-    if (enemy.type === 'boss') {
+    if (enemy.type.startsWith('boss')) {
       this._drawBoss(enemy);
     } else {
       const { x, y, radius: r, color } = enemy;
@@ -825,6 +826,28 @@ class Renderer {
     // Trail
     ctx.strokeStyle = 'rgba(255,150,50,0.5)'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(m.x, m.y - 30); ctx.lineTo(m.x, m.y); ctx.stroke();
+    ctx.restore();
+  }
+
+  // ─── Bomb ──────────────────────────────────────────────────────────────────
+
+  _drawBomb(b) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, b.radius * 2.2);
+    glow.addColorStop(0, 'rgba(255,120,0,0.5)'); glow.addColorStop(1, 'rgba(255,60,0,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(0, 0, b.radius * 2.2, 0, Math.PI * 2); ctx.fill();
+    const bg = ctx.createRadialGradient(-2, -2, 0, 0, 0, b.radius);
+    bg.addColorStop(0, '#555'); bg.addColorStop(1, '#111');
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.arc(0, 0, b.radius, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#FF8800'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(b.radius * 0.6, -b.radius * 0.5);
+    ctx.quadraticCurveTo(b.radius * 1.3, -b.radius * 1.3, b.radius * 0.9, -b.radius * 1.9);
+    ctx.stroke();
     ctx.restore();
   }
 

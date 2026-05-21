@@ -86,6 +86,11 @@ class Enemy {
     this.phase2BulletCount= cfg.phase2BulletCount || 1;
     this.phase2SpeedBoost = cfg.phase2SpeedBoost  || 1;
 
+    this.bulletElem = cfg.bulletElem || 'normal';
+    this.teleportTimer = cfg.teleportCooldown || 0;
+    this.teleportCooldown = cfg.teleportCooldown || 0;
+    this.bombTimer = 0;
+
     this.dead = false;
     this.burnTimer = 0; this.burnDps = 0;
     this.slowTimer = 0; this.speedMod = 1;
@@ -133,7 +138,7 @@ class Enemy {
       if (this.poisonTimer <= 0) { this.poisonTimer = 0; this.poisonDps = 0; }
     }
     // Boss phase 2 transition at 50% HP
-    if (this.type === 'boss' && !this._phase2Done && !this.isInvincible && this.hp <= this.maxHp * 0.5) {
+    if (this.type.startsWith('boss') && !this._phase2Done && !this.isInvincible && this.hp <= this.maxHp * 0.5) {
       this._phase2Done       = true;
       this.isPhase2          = true;
       this.justEnteredPhase2 = true;
@@ -331,5 +336,37 @@ class Beam {
   update(dt) {
     this.life -= dt;
     if (this.life <= 0) this.active = false;
+  }
+}
+
+// ─── Bomb ─────────────────────────────────────────────────────────────────────
+
+class Bomb {
+  constructor(fromX, fromY, toX, toY, atk) {
+    this.x = fromX; this.y = fromY;
+    this.targetX = toX; this.targetY = toY;
+    this.atk = atk;
+    this.blastRadius = 65;
+    this.radius = 9;
+    this.active = true;
+    this.exploded = false;
+    const dx = toX - fromX; const dy = toY - fromY;
+    this.totalDist = Math.hypot(dx, dy) || 1;
+    this.speed = 310;
+    this.vx = (dx / this.totalDist) * this.speed;
+    this.vy = (dy / this.totalDist) * this.speed;
+    this.traveled = 0;
+    this.angle = Math.atan2(dy, dx);
+  }
+
+  update(dt) {
+    if (!this.active || this.exploded) return;
+    this.traveled += this.speed * dt;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    if (this.traveled >= this.totalDist) {
+      this.x = this.targetX; this.y = this.targetY;
+      this.exploded = true;
+    }
   }
 }

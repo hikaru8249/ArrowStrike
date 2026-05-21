@@ -145,7 +145,8 @@ function update(dt, now) {
     for (const t of [40, 90, 140]) {
       if (elapsed >= t && !gameState.taBossSpawned[t] && !spawnSystem.activeBoss) {
         gameState.taBossSpawned[t] = true;
-        spawnSystem.queue.unshift('boss');
+        const bTypes = CONFIG.BOSS_TYPES || ['boss'];
+        spawnSystem.queue.unshift(bTypes[Math.floor(Math.random() * bTypes.length)]);
         spawnSystem.isBossStage = true;
       }
     }
@@ -242,8 +243,8 @@ function update(dt, now) {
   }
 
   if (combatSystem.arrowHitEvents.length > 0) {
-    const hasBossHit    = combatSystem.arrowHitEvents.some(ev => ev.type === 'boss');
-    const bossWasKilled = killed.some(e => e.type === 'boss');
+    const hasBossHit    = combatSystem.arrowHitEvents.some(ev => ev.type.startsWith('boss'));
+    const bossWasKilled = killed.some(e => e.type.startsWith('boss'));
     if (hasBossHit && !bossWasKilled) audioSystem.bossHit();
     else if (!hasBossHit)             audioSystem.hit(combatSystem.arrowHitEvents[0].isCrit);
   }
@@ -289,6 +290,12 @@ function update(dt, now) {
     if (tgt) combatSystem.spawnMeteor(player, tgt.x, tgt.y);
   }
 
+  // Bombs (boss_bomb)
+  combatSystem.updateBombs(dt);
+  const { exploded: bExploded, playerHit: bombHit } = combatSystem.processBombHits(player);
+  for (const b of bExploded) particleSystem.meteorExplosion(b.x, b.y);
+  if (bombHit) { flashScreen('red'); haptic(80); audioSystem.playerHit(); particleSystem.playerHit(player.x, player.y); if (player.hp <= 0) { if (!player.reviveUsed && player.reviveSkill) { player.reviveUsed = true; player.hp = player.maxHp; flashScreen('gold'); } else { triggerGameOver(); return; } } }
+
   // Slow field
   if (player.slowField > 0) {
     const sfRadius = CONFIG.SLOW_FIELD_RADIUS * (1 + player.slowField * 0.3);
@@ -314,7 +321,7 @@ function update(dt, now) {
   if (player.woundTimer > 0) player.woundTimer -= dt;
   if (player.killWarriorTimer > 0) player.killWarriorTimer -= dt;
 
-  // Boss killer: heal on boss appear
+  // Boss killer: heal on boss appear (any boss type)
   if (spawnSystem.justSpawnedBossAt && player.bossKiller > 0) {
     player.heal(player.maxHp);
     flashScreen('gold');
@@ -389,13 +396,13 @@ function update(dt, now) {
 
   // Process kills
   const miniQueue = [];
-  const bossKilled = killed.some(e => e.type === 'boss');
+  const bossKilled = killed.some(e => e.type.startsWith('boss'));
 
   for (const e of killed) {
     spawnSystem.removeEnemy(e);
     progressionSystem.awardXP(gameState, e.xp);
     coinSystem.spawnCoins(e, player);
-    if (e.type !== 'boss') {
+    if (!e.type.startsWith('boss')) {
       particleSystem.enemyDeath(e.x, e.y, e.color);
       audioSystem.enemyDeath();
     }
@@ -415,7 +422,7 @@ function update(dt, now) {
   }
 
   if (bossKilled) {
-    const boss = killed.find(e => e.type === 'boss');
+    const boss = killed.find(e => e.type.startsWith('boss'));
     particleSystem.bossDeath(boss.x, boss.y);
     audioSystem.bossDeath();
     flashScreen('gold');

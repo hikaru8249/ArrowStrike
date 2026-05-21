@@ -76,7 +76,63 @@ const CONFIG = {
       xp: 200, gold: 80,
       fireRate: 1.3, bulletSpeed: 200, bulletDmgBase: 14, bulletDmgMul: 2.5,
       phase2Color: '#cc3333', phase2FireRate: 0.65, phase2BulletCount: 3, phase2SpeedBoost: 1.35
-    }
+    },
+    boss_inferno: {
+      label:'炎魔王', color:'#FF5500', radius:27,
+      baseHp:280, hpMul:88, baseDmg:18, dmgMul:2.5,
+      baseSpeed:0.9, speedMul:0.04,
+      xp:200, gold:80,
+      fireRate:1.4, bulletSpeed:210, bulletDmgBase:16, bulletDmgMul:2.5,
+      bulletElem:'fire',
+      phase2Color:'#FF2200', phase2FireRate:0.55, phase2BulletCount:3, phase2SpeedBoost:1.3
+    },
+    boss_frost: {
+      label:'氷魔王', color:'#22AAFF', radius:27,
+      baseHp:300, hpMul:95, baseDmg:14, dmgMul:2,
+      baseSpeed:0.7, speedMul:0.03,
+      xp:200, gold:80,
+      fireRate:1.1, bulletSpeed:175, bulletDmgBase:12, bulletDmgMul:2,
+      bulletElem:'ice',
+      phase2Color:'#0055FF', phase2FireRate:0.6, phase2BulletCount:5, phase2SpeedBoost:1.2
+    },
+    boss_titan: {
+      label:'タイタン', color:'#888888', radius:38,
+      baseHp:650, hpMul:190, baseDmg:32, dmgMul:4,
+      baseSpeed:0.45, speedMul:0.02,
+      xp:200, gold:80,
+      fireRate:0, bulletSpeed:0, bulletDmgBase:0, bulletDmgMul:0,
+      bulletElem:'normal',
+      phase2Color:'#CCCCCC', phase2FireRate:0, phase2BulletCount:1, phase2SpeedBoost:2.2
+    },
+    boss_poison: {
+      label:'毒蛇王', color:'#44CC44', radius:26,
+      baseHp:260, hpMul:82, baseDmg:14, dmgMul:2,
+      baseSpeed:0.85, speedMul:0.04,
+      xp:200, gold:80,
+      fireRate:0.9, bulletSpeed:158, bulletDmgBase:10, bulletDmgMul:1.8,
+      bulletElem:'poison',
+      phase2Color:'#22AA22', phase2FireRate:0.5, phase2BulletCount:4, phase2SpeedBoost:1.2
+    },
+    boss_bomb: {
+      label:'爆弾魔王', color:'#CC6600', radius:29,
+      baseHp:350, hpMul:105, baseDmg:20, dmgMul:3,
+      baseSpeed:0.7, speedMul:0.03,
+      xp:200, gold:80,
+      fireRate:0.45, bulletSpeed:0, bulletDmgBase:0, bulletDmgMul:0,
+      bulletElem:'normal',
+      bombDmgBase:28, bombDmgMul:4,
+      phase2Color:'#FF4400', phase2FireRate:0.3, phase2BulletCount:2, phase2SpeedBoost:1.15
+    },
+    boss_shadow: {
+      label:'影の王', color:'#7722AA', radius:24,
+      baseHp:220, hpMul:70, baseDmg:16, dmgMul:2,
+      baseSpeed:2.0, speedMul:0.08,
+      xp:200, gold:80,
+      fireRate:2.2, bulletSpeed:240, bulletDmgBase:14, bulletDmgMul:2,
+      bulletElem:'shadow',
+      teleportCooldown:3.5,
+      phase2Color:'#AA44FF', phase2FireRate:1.4, phase2BulletCount:2, phase2SpeedBoost:1.3
+    },
   },
 
   // ── Stage composition ──────────────────────────────────────────────────────
@@ -222,5 +278,6 @@ const CONFIG = {
       apply: p => { p.crit = Math.min(1.0, +(p.crit + 0.10).toFixed(2)); } }
   ],
 
-  SKILL_SHOP_PRICES: { COMMON: 60, RARE: 95, EPIC: 145 }
+  SKILL_SHOP_PRICES: { COMMON: 60, RARE: 95, EPIC: 145 },
+  BOSS_TYPES: ['boss','boss_inferno','boss_frost','boss_titan','boss_poison','boss_bomb','boss_shadow'],
 };

@@ -19,7 +19,8 @@ class SpawnSystem {
       const pre     = Math.min(2, mCount);
       this.queue = [];
       for (let i = 0; i < pre; i++)        this.queue.push(pool[Math.floor(Math.random() * pool.length)]);
-      this.queue.push('boss');
+      const bTypes = CONFIG.BOSS_TYPES || ['boss'];
+      this.queue.push(bTypes[Math.floor(Math.random() * bTypes.length)]);
       for (let i = pre; i < mCount; i++)   this.queue.push(pool[Math.floor(Math.random() * pool.length)]);
     } else {
       const pool  = CONFIG.stageEnemyPool(stage);
@@ -39,8 +40,36 @@ class SpawnSystem {
     for (const e of this.activeEnemies) {
       e.update(dt);
       e.pursue(playerPos.x, playerPos.y, dt, this._room);
-      if (e.fireRate > 0 && !e.isInvincible) {
-        combatSystem.tickEnemyFire(dt, e, playerPos.x, playerPos.y);
+
+      if (!e.isInvincible) {
+        // Shadow boss: teleport
+        if (e.type === 'boss_shadow' && e.teleportCooldown > 0) {
+          e.teleportTimer -= dt;
+          if (e.teleportTimer <= 0) {
+            e.teleportTimer = e.isPhase2 ? e.teleportCooldown * 0.55 : e.teleportCooldown;
+            const r = this._room;
+            for (let i = 0; i < 20; i++) {
+              const nx = r.x + 40 + Math.random() * (r.w - 80);
+              const ny = r.y + 40 + Math.random() * (r.h - 80);
+              if (Math.hypot(nx - playerPos.x, ny - playerPos.y) > 80) { e.x = nx; e.y = ny; break; }
+            }
+          }
+        }
+
+        // Bomb boss: throw bombs instead of bullets
+        if (e.type === 'boss_bomb') {
+          e.bombTimer -= dt;
+          const rate = e.isPhase2 ? e.phase2FireRate : e.fireRate;
+          if (rate > 0 && e.bombTimer <= 0) {
+            e.bombTimer = 1 / rate;
+            const count = e.isPhase2 ? e.phase2BulletCount : 1;
+            const cfg = CONFIG.ENEMY_TYPES.boss_bomb;
+            const dmg = (cfg.bombDmgBase || 28) + this.stage * (cfg.bombDmgMul || 4);
+            combatSystem.spawnBossBomb(e, playerPos, count, dmg);
+          }
+        } else if (e.fireRate > 0) {
+          combatSystem.tickEnemyFire(dt, e, playerPos.x, playerPos.y);
+        }
       }
     }
 
@@ -48,14 +77,14 @@ class SpawnSystem {
     if (this.frameCount < this.interval || this.queue.length === 0) return;
 
     const nextType = this.queue[0];
-    const minionCount = this.activeEnemies.filter(e => e.type !== 'boss').length;
-    const canSpawn = nextType === 'boss' || minionCount < CONFIG.SPAWN.maxActive;
+    const minionCount = this.activeEnemies.filter(e => !e.type.startsWith('boss')).length;
+    const canSpawn = nextType.startsWith('boss') || minionCount < CONFIG.SPAWN.maxActive;
     if (!canSpawn) return;
 
     this.queue.shift();
     const pos = this._pickPos(playerPos, nextType === 'boss' ? 50 : CONFIG.ENEMY_NORMAL?.radius ?? 14);
     this.activeEnemies.push(new Enemy(pos.x, pos.y, this.stage, nextType));
-    if (nextType === 'boss') this.justSpawnedBossAt = pos;
+    if (nextType.startsWith('boss')) this.justSpawnedBossAt = pos;
     this.frameCount = 0;
     this.interval = this._randInterval();
   }
@@ -82,7 +111,7 @@ class SpawnSystem {
 
   allDead()              { return this.queue.length === 0 && this.activeEnemies.length === 0; }
   get enemiesRemaining() { return this.queue.length + this.activeEnemies.length; }
-  get activeBoss()       { return this.activeEnemies.find(e => e.type === 'boss') || null; }
+  get activeBoss()       { return this.activeEnemies.find(e => e.type.startsWith('boss')) || null; }
 }
 
 // ─── CombatSystem ─────────────────────────────────────────────────────────────
@@ -95,6 +124,7 @@ class CombatSystem {
     this.beams          = [];
     this.strikes        = [];
     this.meteors        = [];
+    this.bombs          = [];
     this.beamTimer      = 0;
     this.justFired      = false;
     this.justFiredBeam  = false;
@@ -171,6 +201,7 @@ class CombatSystem {
   // Enemy fires at player
   tickEnemyFire(dt, enemy, playerX, playerY) {
     const rate = enemy.isPhase2 ? enemy.phase2FireRate : enemy.fireRate;
+    if (!rate) return;
     enemy.fireTimer += dt;
     if (enemy.fireTimer < 1 / rate) return;
     enemy.fireTimer = 0;
@@ -179,16 +210,26 @@ class CombatSystem {
     const dist = Math.hypot(dx, dy);
     if (dist < 1) return;
 
-    const s    = enemy.bulletSpeed;
-    const dmg  = enemy.bulletDmg;
-    const col  = enemy.isPhase2 ? '#ff4444' : (enemy.type === 'boss' ? '#cc2222' : '#88bbff');
+    const s   = enemy.bulletSpeed;
+    const dmg = enemy.bulletDmg;
+    const elemCol = { fire:'#FF5500', ice:'#44BBFF', poison:'#55EE55', shadow:'#BB66FF' };
+    const col = elemCol[enemy.bulletElem] || (enemy.isPhase2 ? '#ff4444' : '#cc2222');
     const count = enemy.isPhase2 ? enemy.phase2BulletCount : 1;
+
+    // Shadow boss phase2: radial burst
+    if (enemy.type === 'boss_shadow' && enemy.isPhase2) {
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        this.enemyBullets.push(new EnemyBullet(enemy.x, enemy.y, Math.cos(a)*s, Math.sin(a)*s, dmg, col));
+      }
+      return;
+    }
 
     if (count === 1) {
       this.enemyBullets.push(new EnemyBullet(enemy.x, enemy.y, (dx/dist)*s, (dy/dist)*s, dmg, col));
     } else {
       const base = Math.atan2(dy, dx);
-      const step = (28 * Math.PI / 180);
+      const step = 28 * Math.PI / 180;
       for (let i = -(count-1)/2; i <= (count-1)/2; i++) {
         const a = base + i * step;
         this.enemyBullets.push(new EnemyBullet(enemy.x, enemy.y, Math.cos(a)*s, Math.sin(a)*s, dmg, col));
@@ -244,7 +285,7 @@ class CombatSystem {
           if (player.berserker > 0 && player.hp < player.maxHp * 0.5) atkMul *= (1 + 0.4 * player.berserker);
           if (player.woundWarrior > 0 && player.woundTimer > 0) atkMul *= (1 + 0.6 * player.woundWarrior);
           if (player.killWarrior > 0 && player.killWarriorTimer > 0) atkMul *= (1 + 0.3 * player.killWarrior);
-          if (player.bossKiller > 0 && enemy.type === 'boss') atkMul *= (1 + 0.5 * player.bossKiller);
+          if (player.bossKiller > 0 && enemy.type.startsWith('boss')) atkMul *= (1 + 0.5 * player.bossKiller);
           const finalAtk = Math.max(1, Math.floor(arrow.atk * atkMul));
           if (enemy.takeDamage(finalAtk)) killed.push(enemy);
           if (player.lifesteal > 0) player.heal(Math.max(1, Math.floor(finalAtk * player.lifesteal)));
@@ -431,6 +472,35 @@ class CombatSystem {
     this.meteors.push(new Meteor(targetX, targetY, atk, elemType));
   }
 
+  spawnBossBomb(boss, playerPos, count, atk) {
+    const spread = 55;
+    for (let i = 0; i < count; i++) {
+      const tx = playerPos.x + (Math.random() - 0.5) * spread * 2;
+      const ty = playerPos.y + (Math.random() - 0.5) * spread * 2;
+      this.bombs.push(new Bomb(boss.x, boss.y, tx, ty, atk));
+    }
+  }
+
+  updateBombs(dt) {
+    for (const b of this.bombs) b.update(dt);
+    this.bombs = this.bombs.filter(b => b.active);
+  }
+
+  processBombHits(player) {
+    const exploded = []; let playerHit = false;
+    for (const b of this.bombs) {
+      if (!b.active || !b.exploded) continue;
+      b.active = false;
+      exploded.push({ x: b.x, y: b.y });
+      if (Math.hypot(player.x - b.x, player.y - b.y) < b.blastRadius + player.radius) {
+        playerHit = true;
+        if (player.shieldCount > 0) { player.shieldCount--; }
+        else { player.takeDamage(b.atk); }
+      }
+    }
+    return { exploded, playerHit };
+  }
+
   updateBeams(dt) {
     for (const b of this.beams) b.update(dt);
     this.beams = this.beams.filter(b => b.active);
@@ -519,7 +589,7 @@ class CombatSystem {
     return killed;
   }
 
-  clearAll() { this.arrows = []; this.enemyBullets = []; this.beams = []; this.strikes = []; this.meteors = []; this.beamTimer = 0; }
+  clearAll() { this.arrows = []; this.enemyBullets = []; this.beams = []; this.strikes = []; this.meteors = []; this.bombs = []; this.beamTimer = 0; }
 }
 
 // ─── CoinSystem ───────────────────────────────────────────────────────────────
