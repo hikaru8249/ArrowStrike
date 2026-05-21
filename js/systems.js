@@ -695,12 +695,13 @@ class ProgressionSystem {
     const p = gameState.player;
     p.xp += Math.round(amount * (1 + p.xpMul));
     p.kills++;
-    while (p.xp >= p.xpToNext) {
+    while (p.xp >= p.xpToNext && p.level < 30) {
       p.xp -= p.xpToNext;
       p.level++;
       p.xpToNext = p.level * CONFIG.XP_BASE;
       gameState.pendingLevelUps++;
     }
+    if (p.level >= 30) { p.xp = p.xpToNext; }
   }
 
   advanceStage(gameState) {
